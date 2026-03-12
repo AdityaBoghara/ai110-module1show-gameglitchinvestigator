@@ -1,24 +1,7 @@
 import random
 import streamlit as st
-from logic_utils import get_range_for_difficulty, check_guess, update_score
+from logic_utils import get_range_for_difficulty, check_guess, update_score, parse_guess
 
-
-def parse_guess(raw: str):
-    if raw is None:
-        return False, None, "Enter a guess."
-
-    if raw == "":
-        return False, None, "Enter a guess."
-
-    try:
-        if "." in raw:
-            value = int(float(raw))
-        else:
-            value = int(raw)
-    except Exception:
-        return False, None, "That is not a number."
-
-    return True, value, None
 
 
 
