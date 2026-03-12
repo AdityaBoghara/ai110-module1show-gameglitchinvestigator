@@ -3,8 +3,6 @@ import streamlit as st
 from logic_utils import get_range_for_difficulty, check_guess, update_score, parse_guess
 
 
-
-
 st.set_page_config(page_title="Glitchy Guesser", page_icon="🎮")
 
 st.title("🎮 Game Glitch Investigator")
@@ -65,10 +63,7 @@ with st.expander("Developer Debug Info"):
     st.write("Difficulty:", difficulty)
     st.write("History:", st.session_state.history)
 
-raw_guess = st.text_input(
-    "Enter your guess:",
-    key=f"guess_input_{difficulty}"
-)
+raw_guess = st.text_input("Enter your guess:", key=f"guess_input_{difficulty}")
 
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -78,9 +73,12 @@ with col2:
 with col3:
     show_hint = st.checkbox("Show hint", value=True)
 
+# FIXME: New Game button always called random.randint(1, 100), silently ignoring
+# the selected difficulty and always resetting to the Normal range.
+# FIX: Replace hardcoded (1, 100) with `low` and `high` from get_range_for_difficulty()
 if new_game:
     st.session_state.attempts = 0
-    st.session_state.secret = random.randint(1, 100)
+    st.session_state.secret = random.randint(low, high)
     st.success("New game started.")
     st.rerun()
 

@@ -87,6 +87,9 @@ Claude correctly identified that attempts was initialized to 1 instead of 0, cau
 Bug 3:
 Claude correctly identified that the info banner in app.py was hardcoded to "Guess a number between 1 and 100", ignoring the difficulty setting entirely. It pointed out that low and high were already being computed from get_range_for_difficulty(difficulty) on line 45, so the fix was simply replacing the hardcoded values with those variables. I verified it by switching between Easy, Normal, and Hard in the app and confirming the banner updated to reflect the correct range for each difficulty.
 
+Bug 4:
+Claude correctly identified that the New Game button called random.randint(1, 100) instead of using the low and high variables already derived from the selected difficulty. The fix was a one-line change: replacing the hardcoded values with random.randint(low, high). I verified it by selecting Easy difficulty, clicking New Game repeatedly, and confirming via the Developer Debug Info expander that the secret number stayed within the Easy range (1–20) every time.
+
 ---
 
 ## 3. Debugging and testing your fixes
@@ -156,6 +159,17 @@ I ran the app and selected each difficulty in turn. On Easy the banner showed "G
 
 Did AI help you design or understand any tests? How?
 Claude pointed out that since the bug was a hardcoded string in Streamlit UI code, a pytest unit test wasn't applicable — the right verification was a manual walkthrough switching difficulties and reading the banner. This reinforced the same lesson from Bug 2: not every fix requires an automated test, and knowing which tool fits the situation is part of good debugging practice.
+
+Bug 4:
+
+How did you decide whether a bug was really fixed?
+I decided the bug was fixed by manually running the app, selecting Easy difficulty, and clicking New Game several times. Because the bug was in Streamlit UI code (not a pure function), there was no pytest test to write — I used the Developer Debug Info expander to read the secret value directly after each reset and confirm it stayed within the correct range.
+
+Describe at least one test you ran:
+I set difficulty to Easy, clicked New Game five times, and read the "Secret:" value from the Developer Debug Info expander each time. Before the fix, the secret was frequently outside the Easy range (e.g., 73 or 91). After the fix, every reset produced a value between 1 and 20, confirming the correct range was being used.
+
+Did AI help you design or understand any tests? How?
+Claude pointed out that since the bug lived in the New Game button handler in app.py — not a pure function — a unit test wasn't the right tool. It suggested using the built-in debug expander to observe the secret directly, which gave immediate, reliable feedback without needing to guess whether the fix was working. This was the same lesson as Bugs 2 and 3: match the verification method to where the bug actually lives.
 
 
 ---
