@@ -67,10 +67,16 @@ Answer each question in 3 to 5 sentences. Be specific and honest about what actu
 - Give one example of an AI suggestion that was incorrect or misleading (including what the AI suggested and how you verified the result).
 
 AI tool: Claude
+
 Bug 1 Fix:
 Fixed the logic by swapping the range of normal and hard by swapping the values. 
 The AI suggestion was correct in the logic_utils file and i verified it by running the test file
 
+Bug 6 and 7 fix: 
+Claude identified that the hints in check_guess were swapped — "Too High" was paired with "Go HIGHER!" when it should say "Go LOWER!", and vice versa. I verified this by reading the logic: if guess > secret, the player needs to guess lower, so the hint was clearly backwards. The fix was confirmed correct by the passing pytest tests (test_hints_not_swapped, test_guess_too_high, test_guess_too_low).
+
+Example of an incorrect or misleading AI suggestion:
+Claude's first refactor of check_guess still had a bug — it used int() conversion in the except TypeError block, but didn't handle the case where 42 == "42" (int vs string) would fail the initial == check and fall through incorrectly returning "Too Low" instead of "Win". The tests exposed this: test_mixed_type_win failed with assert 'Too Low' == 'Win'. The AI's suggested fix only partially solved the type-mismatch problem and had to be revised a second time to normalize both values to int upfront.
 
 
 ---
@@ -87,8 +93,6 @@ I tested the bug fix by asking claude to generate a test case: test_hard_range_l
  confirmed the fix by writing a targeted pytest test and running the test suite.
 
 Test I ran:
-
-
 def test_hard_range_larger_than_normal():
     _, normal_high = get_range_for_difficulty("Normal")
     _, hard_high = get_range_for_difficulty("Hard")
@@ -98,6 +102,16 @@ Running pytest showed this test passed, which confirmed that Hard's range (1–1
 Did AI help you design or understand any tests?
 
 Yes. I asked Claude (AI) to generate a pytest case specifically targeting the bug. It identified that the right thing to test wasn't just the raw values, but the relationship between difficulty levels — asserting hard_high > normal_high rather than hardcoding expected numbers. This made the test resilient to future range changes while still enforcing the correct difficulty ordering.
+
+Bug 6 & 7:
+How did you decide whether a bug was really fixed?
+A bug was considered fixed only when the corresponding pytest test passed. Reading the code alone wasn't enough — the 42 == "42" bug looked plausible in the first fix but the test exposed it immediately. Running the full test suite after each change ensured no regression was introduced.
+
+Describe at least one test you ran and what it showed:
+test_mixed_type_str_comparison_not_lexicographic called check_guess(9, "10") and asserted the outcome was "Too Low". This was critical because Python evaluates "9" > "10" as True (lexicographic order), which would wrongly return "Too High". The test passing confirmed the fix was using numeric comparison via int() rather than raw string comparison.
+
+Did AI help you design or understand any tests? How?
+Yes — Claude Code suggested the test cases and explained the reasoning behind each one. For example, it pointed out that the TypeError fallback in the original code used string comparison, and proposed check_guess(9, "10") specifically to expose that edge case. It also identified that check_guess("abc", "xyz") wouldn't raise a TypeError at all (strings are always comparable in Python), which is why a separate test_invalid_input_returns_invalid test was needed. However, the AI's initial fix still failed two of its own tests, which showed that tests are necessary to verify AI-generated code — not just trust it.
 
 
 ---

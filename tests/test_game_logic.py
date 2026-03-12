@@ -10,16 +10,43 @@ def test_hard_range_larger_than_normal():
 
 
 def test_winning_guess():
-    # If the secret is 50 and guess is 50, it should be a win
-    result = check_guess(50, 50)
-    assert result == "Win"
+    outcome, message = check_guess(50, 50)
+    assert outcome == "Win"
+    assert message == "🎉 Correct!"
 
 def test_guess_too_high():
-    # If secret is 50 and guess is 60, hint should be "Too High"
-    result = check_guess(60, 50)
-    assert result == "Too High"
+    outcome, message = check_guess(60, 50)
+    assert outcome == "Too High"
+    assert "LOWER" in message  # hint must say go lower, not higher
 
 def test_guess_too_low():
-    # If secret is 50 and guess is 40, hint should be "Too Low"
-    result = check_guess(40, 50)
-    assert result == "Too Low"
+    outcome, message = check_guess(40, 50)
+    assert outcome == "Too Low"
+    assert "HIGHER" in message  # hint must say go higher, not lower
+
+def test_hints_not_swapped():
+    # Regression: original bug had hints backwards
+    high_outcome, high_msg = check_guess(99, 1)
+    low_outcome, low_msg = check_guess(1, 99)
+    assert high_outcome == "Too High" and "LOWER" in high_msg
+    assert low_outcome == "Too Low" and "HIGHER" in low_msg
+
+def test_mixed_type_int_guess_str_secret():
+    # App passes secret as str on even attempts
+    outcome, message = check_guess(5, "10")
+    assert outcome == "Too Low"
+    assert "HIGHER" in message
+
+def test_mixed_type_str_comparison_not_lexicographic():
+    # Regression: "9" > "10" is True lexicographically — must use numeric comparison
+    outcome, _ = check_guess(9, "10")
+    assert outcome == "Too Low", "9 < 10 numerically; must not use lexicographic string comparison"
+
+def test_mixed_type_win():
+    outcome, message = check_guess(42, "42")
+    assert outcome == "Win"
+    assert message == "🎉 Correct!"
+
+def test_invalid_input_returns_invalid():
+    outcome, _ = check_guess("abc", "xyz")
+    assert outcome == "Invalid"

@@ -28,7 +28,20 @@ def check_guess(guess, secret):
 
     outcome examples: "Win", "Too High", "Too Low"
     """
-    raise NotImplementedError("Refactor this function from app.py into logic_utils.py")
+    # FIXME: Hints were swapped ("Go HIGHER!" on too-high, "Go LOWER!" on too-low),
+    # the TypeError fallback used lexicographic string comparison (e.g. "9" > "10" == True),
+    # and int == str (e.g. 42 == "42") was never caught as a win
+    # FIX: Normalise both values to int first, then compare
+    try:
+        g, s = int(guess), int(secret)
+    except (ValueError, TypeError):
+        return "Invalid", "❓ Invalid input"
+
+    if g == s:
+        return "Win", "🎉 Correct!"
+    if g > s:
+        return "Too High", "📉 Go LOWER!"
+    return "Too Low", "📈 Go HIGHER!"
 
 
 def update_score(current_score: int, outcome: str, attempt_number: int):
