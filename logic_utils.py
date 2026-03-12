@@ -46,4 +46,16 @@ def check_guess(guess, secret):
 
 def update_score(current_score: int, outcome: str, attempt_number: int):
     """Update score based on outcome and attempt number."""
-    raise NotImplementedError("Refactor this function from app.py into logic_utils.py")
+    # FIXME: "Too High" awarded +5 points on even attempts instead of always deducting,
+    # causing inconsistent scoring and an exploitable loophole
+    # FIX: Both "Too High" and "Too Low" now consistently deduct 5 points
+    if outcome == "Win":
+        points = 100 - 10 * (attempt_number + 1)
+        if points < 10:
+            points = 10
+        return current_score + points
+
+    if outcome in ("Too High", "Too Low"):
+        return current_score - 5
+
+    return current_score

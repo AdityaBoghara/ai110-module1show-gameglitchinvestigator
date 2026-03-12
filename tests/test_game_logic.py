@@ -1,4 +1,4 @@
-from logic_utils import check_guess, get_range_for_difficulty
+from logic_utils import check_guess, get_range_for_difficulty, update_score
 
 
 def test_hard_range_larger_than_normal():
@@ -50,3 +50,30 @@ def test_mixed_type_win():
 def test_invalid_input_returns_invalid():
     outcome, _ = check_guess("abc", "xyz")
     assert outcome == "Invalid"
+
+
+def test_update_score_win_first_attempt():
+    # attempt_number=1: 100 - 10*(1+1) = 80 points
+    assert update_score(0, "Win", 1) == 80
+
+def test_update_score_win_minimum_points():
+    # attempt_number=9: 100 - 10*(9+1) = 0, clamped to 10
+    assert update_score(0, "Win", 9) == 10
+
+def test_update_score_too_high_always_deducts():
+    # Regression: bug awarded +5 on even attempts
+    assert update_score(100, "Too High", 0) == 95
+    assert update_score(100, "Too High", 1) == 95
+    assert update_score(100, "Too High", 2) == 95
+
+def test_update_score_too_low_deducts():
+    assert update_score(100, "Too Low", 1) == 95
+
+def test_update_score_high_and_low_equal_penalty():
+    # Both wrong-guess outcomes should deduct the same amount
+    score_after_high = update_score(100, "Too High", 3)
+    score_after_low = update_score(100, "Too Low", 3)
+    assert score_after_high == score_after_low
+
+def test_update_score_unknown_outcome_unchanged():
+    assert update_score(50, "Invalid", 1) == 50

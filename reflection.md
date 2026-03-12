@@ -78,6 +78,9 @@ Claude identified that the hints in check_guess were swapped — "Too High" was 
 Example of an incorrect or misleading AI suggestion:
 Claude's first refactor of check_guess still had a bug — it used int() conversion in the except TypeError block, but didn't handle the case where 42 == "42" (int vs string) would fail the initial == check and fall through incorrectly returning "Too Low" instead of "Win". The tests exposed this: test_mixed_type_win failed with assert 'Too Low' == 'Win'. The AI's suggested fix only partially solved the type-mismatch problem and had to be revised a second time to normalize both values to int upfront.
 
+Bug 8:
+Claude correctly identified that the update_score bug was in the "Too High" branch awarding +5 points on even attempts instead of deducting. It suggested collapsing both wrong-guess outcomes into a single if outcome in ("Too High", "Too Low") check. I verified this by writing the regression test test_update_score_too_high_always_deducts, which calls the function with even and odd attempt numbers and asserts all return current_score - 5.
+
 
 ---
 
@@ -112,6 +115,20 @@ test_mixed_type_str_comparison_not_lexicographic called check_guess(9, "10") and
 
 Did AI help you design or understand any tests? How?
 Yes — Claude Code suggested the test cases and explained the reasoning behind each one. For example, it pointed out that the TypeError fallback in the original code used string comparison, and proposed check_guess(9, "10") specifically to expose that edge case. It also identified that check_guess("abc", "xyz") wouldn't raise a TypeError at all (strings are always comparable in Python), which is why a separate test_invalid_input_returns_invalid test was needed. However, the AI's initial fix still failed two of its own tests, which showed that tests are necessary to verify AI-generated code — not just trust it.
+
+Bug 8: 
+
+How did you decide whether a bug was really fixed?
+
+I considered the bug fixed only when the regression test test_update_score_too_high_always_deducts passed with even and odd attempt numbers. Reading the fixed code alone wasn't sufficient — the original buggy code also looked intentional at first glance, so a test that explicitly calls the function three times (attempt 0, 1, 2) and asserts == 95 each time was the only reliable confirmation.
+
+Describe at least one test you ran:
+
+test_update_score_high_and_low_equal_penalty called update_score(100, "Too High", 3) and update_score(100, "Too Low", 3) and asserted both results were equal. This was useful because it didn't just check the fixed outcome — it verified the symmetry between the two wrong-guess cases, which is what the bug had broken in the first place.
+
+Did AI help you design or understand any tests?
+
+Yes — Claude designed all six update_score tests and explained the reasoning. It specifically added test_update_score_too_high_always_deducts as a regression test targeting the original bug, and test_update_score_unknown_outcome_unchanged to guard against future outcomes being accidentally penalized. This showed me that good tests don't just verify the happy path — they also pin down the exact behavior that was broken.
 
 
 ---
