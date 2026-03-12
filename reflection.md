@@ -81,6 +81,11 @@ Claude's first refactor of check_guess still had a bug — it used int() convers
 Bug 8:
 Claude correctly identified that the update_score bug was in the "Too High" branch awarding +5 points on even attempts instead of deducting. It suggested collapsing both wrong-guess outcomes into a single if outcome in ("Too High", "Too Low") check. I verified this by writing the regression test test_update_score_too_high_always_deducts, which calls the function with even and odd attempt numbers and asserts all return current_score - 5.
 
+Bug 2:
+Claude correctly identified that attempts was initialized to 1 instead of 0, causing the player to start every game having already "used" an attempt. It pointed out that the "Attempts left" display subtracted st.session_state.attempts from attempt_limit, so starting at 1 immediately showed one fewer attempt available even before the first guess. The fix was a one-line change: st.session_state.attempts = 0. I verified it visually by running the app and confirming the sidebar showed the full attempt count on a fresh load, and confirmed the new_game button already reset to 0 — meaning the first load was the only place with the wrong value.
+
+Bug 3:
+Claude correctly identified that the info banner in app.py was hardcoded to "Guess a number between 1 and 100", ignoring the difficulty setting entirely. It pointed out that low and high were already being computed from get_range_for_difficulty(difficulty) on line 45, so the fix was simply replacing the hardcoded values with those variables. I verified it by switching between Easy, Normal, and Hard in the app and confirming the banner updated to reflect the correct range for each difficulty.
 
 ---
 
@@ -129,6 +134,28 @@ test_update_score_high_and_low_equal_penalty called update_score(100, "Too High"
 Did AI help you design or understand any tests?
 
 Yes — Claude designed all six update_score tests and explained the reasoning. It specifically added test_update_score_too_high_always_deducts as a regression test targeting the original bug, and test_update_score_unknown_outcome_unchanged to guard against future outcomes being accidentally penalized. This showed me that good tests don't just verify the happy path — they also pin down the exact behavior that was broken.
+
+Bug 2:
+
+How did you decide whether a bug was really fixed?
+I decided the bug was fixed by running the app manually and verifying the "Attempts left" display showed the correct full count on a fresh load. Because this bug lived in app.py session state (not a pure function), there was no pytest test to run — I had to visually confirm the counter started at the right number before the first guess was submitted.
+
+Describe at least one test you ran:
+I ran the app and checked the sidebar caption "Attempts left: N" on first load. Before the fix it showed one fewer attempt than allowed (e.g., 7 instead of 8 on Normal). After changing the initialization to 0, the display matched the expected attempt_limit exactly. I also compared the first-load behavior against the New Game button reset, which already used 0 — confirming the two code paths were now consistent.
+
+Did AI help you design or understand any tests? How?
+Claude pointed out that this bug couldn't be caught by a unit test because it involved Streamlit session state initialization, not a pure function. Instead, it suggested a manual verification checklist: load the app fresh, check the attempts-left count, submit one guess, and confirm the count decrements correctly from the full limit. This was a useful reminder that not every bug needs a pytest test — sometimes a structured manual check is the right tool.
+
+Bug 3:
+
+How did you decide whether a bug was really fixed?
+I decided the bug was fixed by manually running the app and switching between Easy, Normal, and Hard difficulties, confirming the info banner updated to the correct range each time. Because the bug was in a hardcoded string in app.py rather than a pure function, there was no pytest test to write — visual verification was the right approach.
+
+Describe at least one test you ran:
+I ran the app and selected each difficulty in turn. On Easy the banner showed "Guess a number between 1 and 20", on Normal "1 and 50", and on Hard "1 and 100". Before the fix, all three showed "1 and 100", so seeing the banner change with difficulty confirmed the fix was working correctly.
+
+Did AI help you design or understand any tests? How?
+Claude pointed out that since the bug was a hardcoded string in Streamlit UI code, a pytest unit test wasn't applicable — the right verification was a manual walkthrough switching difficulties and reading the banner. This reinforced the same lesson from Bug 2: not every fix requires an automated test, and knowing which tool fits the situation is part of good debugging practice.
 
 
 ---

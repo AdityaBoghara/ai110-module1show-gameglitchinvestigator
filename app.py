@@ -50,8 +50,11 @@ st.sidebar.caption(f"Attempts allowed: {attempt_limit}")
 if "secret" not in st.session_state:
     st.session_state.secret = random.randint(low, high)
 
+# FIXME: attempts was initialized to 1, consuming one attempt before the player
+# made any guess and causing the attempts-left display to be off by one from the start
+# FIX: Initialize attempts to 0 so the counter is accurate from the first guess
 if "attempts" not in st.session_state:
-    st.session_state.attempts = 1
+    st.session_state.attempts = 0
 
 if "score" not in st.session_state:
     st.session_state.score = 0
@@ -64,8 +67,11 @@ if "history" not in st.session_state:
 
 st.subheader("Make a guess")
 
+# FIXME: Info banner was hardcoded to "1 and 100" regardless of the selected difficulty,
+# so players always saw the wrong range on Easy and Hard modes.
+# FIX: Replace hardcoded values with the `low` and `high` variables from get_range_for_difficulty()
 st.info(
-    f"Guess a number between 1 and 100. "
+    f"Guess a number between {low} and {high}. "
     f"Attempts left: {attempt_limit - st.session_state.attempts}"
 )
 
