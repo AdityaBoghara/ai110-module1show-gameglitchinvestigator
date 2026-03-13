@@ -297,15 +297,18 @@ Claude identified that the test comment ("100 - 10*(1+1) = 80") matched the brok
 
 ## 4. What did you learn about Streamlit and state?
 
-- In your own words, explain why the secret number kept changing in the original app.
-- How would you explain Streamlit "reruns" and session state to a friend who has never used Streamlit?
-- What change did you make that finally gave the game a stable secret number?
+The secret number kept changing because of how Streamlit works under the hood. Every single time you click a button — Submit, New Game, anything — Streamlit reruns the entire Python script from top to bottom. In the original code, `random.randint(low, high)` was just sitting at the top level with no protection, so every rerun rolled a brand new number. The player never had a chance because the target was literally moving with every click.
+
+The way I'd explain Streamlit reruns to a friend is like this: imagine every button click refreshes the whole webpage and reruns all your code from scratch. Variables don't survive between refreshes unless you save them somewhere special. That "somewhere special" is `st.session_state` — it's basically a small notepad that Streamlit keeps alive between reruns. Whatever you write to it sticks around until you clear it manually.
+
+The fix was wrapping the secret generation in a `if "secret" not in st.session_state:` check. That one guard means the number only gets picked once — on the very first load — and every rerun after that just reads the existing value instead of rolling a new one. Once that was in place the game actually became playable.
 
 ---
 
 ## 5. Looking ahead: your developer habits
 
-- What is one habit or strategy from this project that you want to reuse in future labs or projects?
-  - This could be a testing habit, a prompting strategy, or a way you used Git.
-- What is one thing you would do differently next time you work with AI on a coding task?
-- In one or two sentences, describe how this project changed the way you think about AI generated code.
+The habit I want to carry forward is running tests after *every* fix, not just at the end. There were a few times on this project where I fixed one bug and it quietly broke something else, and the only reason I caught it was because the full test suite ran and a previously passing test suddenly failed. That feedback loop — fix something, run all tests, see what else shifted — saved me from shipping broken code more than once.
+
+One thing I'd do differently next time is verify AI suggestions before accepting them, especially for logic-heavy fixes. I caught myself a couple times just reading the AI's explanation, thinking "yeah that makes sense," and moving on — only to have the tests fail because the fix was incomplete or made a subtle wrong assumption. Going forward I want to treat AI output the same way I'd treat code from a teammate: read it, understand it, then test it.
+
+This project genuinely shifted how I think about AI-generated code. I went in assuming the AI would either get it right or obviously get it wrong, but the sneaky middle case — code that *looks* correct, passes a quick read, but fails on a specific edge case — is what actually bit me. AI is a strong starting point, but it's not a replacement for running the code and actually verifying the result.

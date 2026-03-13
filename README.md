@@ -49,6 +49,10 @@ It wrote the code, ran away, and now the game is unplayable.
 
 ![Winning Screenshot](Winning%20Screenshot.png)
 
+## Challenge 1: Advanced Edge-Case Testing
+
+![pytest results — 21 passed](Challange1Screenshot.png)
+
 ## 🚀 Stretch Features
 
 - [ ] [If you choose to complete Challenge 4, insert a screenshot of your Enhanced Game UI here]
