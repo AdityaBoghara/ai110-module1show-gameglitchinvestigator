@@ -61,7 +61,10 @@ def update_score(current_score: int, outcome: str, attempt_number: int):
     # causing inconsistent scoring and an exploitable loophole
     # FIX: Both "Too High" and "Too Low" now consistently deduct 5 points
     if outcome == "Win":
-        points = 100 - 10 * (attempt_number + 1)
+        # FIXME: Formula used 100 - 10 * (attempt_number + 1), penalizing the player
+        # one extra tier — winning on attempt 1 awarded 80 points instead of 90.
+        # FIX: Removed the spurious +1 so the formula is 100 - 10 * attempt_number
+        points = 100 - 10 * attempt_number
         if points < 10:
             points = 10
         return current_score + points

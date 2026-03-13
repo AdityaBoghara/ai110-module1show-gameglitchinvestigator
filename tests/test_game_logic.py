@@ -53,12 +53,12 @@ def test_invalid_input_returns_invalid():
 
 
 def test_update_score_win_first_attempt():
-    # attempt_number=1: 100 - 10*(1+1) = 80 points
-    assert update_score(0, "Win", 1) == 80
+    # attempt_number=1: 100 - 10*1 = 90 points
+    assert update_score(0, "Win", 1) == 90
 
 def test_update_score_win_minimum_points():
-    # attempt_number=9: 100 - 10*(9+1) = 0, clamped to 10
-    assert update_score(0, "Win", 9) == 10
+    # attempt_number=10: 100 - 10*10 = 0, clamped to 10
+    assert update_score(0, "Win", 10) == 10
 
 def test_update_score_too_high_always_deducts():
     # Regression: bug awarded +5 on even attempts

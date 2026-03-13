@@ -46,6 +46,18 @@ if "status" not in st.session_state:
 if "history" not in st.session_state:
     st.session_state.history = []
 
+# FIXME: Changing difficulty mid-game never reset the secret, attempts, history,
+# or status — the secret stayed in the old range and a player could switch from
+# Hard to Easy to gain extra attempts.
+# FIX: Track the active difficulty in session state and reset all game state
+# whenever the difficulty changes.
+if st.session_state.get("difficulty") != difficulty:
+    st.session_state.difficulty = difficulty
+    st.session_state.secret = random.randint(low, high)
+    st.session_state.attempts = 0
+    st.session_state.history = []
+    st.session_state.status = "playing"
+
 st.subheader("Make a guess")
 
 # FIXME: Info banner was hardcoded to "1 and 100" regardless of the selected difficulty,
@@ -78,6 +90,10 @@ with col3:
 # FIX: Replace hardcoded (1, 100) with `low` and `high` from get_range_for_difficulty()
 if new_game:
     st.session_state.attempts = 0
+    # FIXME: history was never cleared here, so guesses from previous rounds
+    # accumulated indefinitely in the history list shown in the debug panel.
+    # FIX: Reset history to an empty list so each new game starts with a clean slate.
+    st.session_state.history = []
     st.session_state.secret = random.randint(low, high)
     # FIXME: status was never reset here, so after winning or losing the early-stop
     # check at line 85 would immediately halt the new game.

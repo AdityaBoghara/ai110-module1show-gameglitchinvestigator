@@ -124,6 +124,15 @@ Claude correctly identified that st.session_state.status was never reset in the 
 Example of an incorrect or misleading AI suggestion for Bug 12:
 Claude's first explanation of the bug described it as a "missing reset" without flagging that st.rerun() at the end of the new_game block actually triggers the status check on the very next script execution — meaning the guard fires before any guess is submitted, not on guess submission. I initially thought the bug would only surface when clicking Submit after New Game, but it actually blocks the game immediately after the rerun. Running the app manually made this clear: the "You already won." banner appeared right after clicking New Game, before I could type anything at all.
 
+Bug 13:
+Claude correctly identified that st.session_state.history was never cleared in the New Game block. After each game, clicking New Game reset the secret and attempts but left the history list intact, so guesses from all previous rounds kept accumulating in the Developer Debug Info panel. The fix was a one-line addition — st.session_state.history = [] — placed alongside the other reset lines inside the new_game block. I verified it by playing a round, clicking New Game, and confirming the history list in the debug expander was empty before any new guesses were submitted.
+
+Bug 14:
+Claude correctly identified that the win score formula in update_score used 100 - 10 * (attempt_number + 1), which applied an extra penalty tier — a player winning on their first attempt received 80 points instead of the expected 90. It also caught that the regression test test_update_score_win_first_attempt was written to assert == 80, matching the broken formula rather than the intended behavior, so the bug had never been detected by the test suite. The fix was removing the spurious + 1 from the formula and updating the test assertion from 80 to 90. I verified it by running pytest and confirming test_update_score_win_first_attempt passed with the corrected expected value.
+
+Example of an incorrect or misleading AI suggestion for Bug 14:
+Claude's first pass flagged only the formula in logic_utils.py and did not initially mention that the test itself was wrong. I had to re-read the test file and notice that the comment still said "100 - 10*(1+1) = 80 points" — matching the old broken formula. The AI only caught the test issue when prompted to check whether any tests reflected the old behavior. This was a good reminder that when a formula changes, every test asserting its output must be reviewed at the same time.
+
 
 ---
 
@@ -260,6 +269,28 @@ I played a game to a win, clicked New Game, then typed a guess and clicked Submi
 
 Did AI help you design or understand any tests? How?
 Claude pointed out that the bug was invisible during normal play and only surfaced after reaching a terminal state. It suggested the exact reproduction steps — play to completion, click New Game, submit a guess — and explained that st.rerun() makes Streamlit re-execute the entire script from the top, so the status guard fires immediately on the rerun rather than waiting for the next Submit click. This helped me understand why the game appeared broken right after clicking New Game rather than only when guessing, which made the fix and verification straightforward.
+
+Bug 13:
+
+How did you decide whether a bug was really fixed?
+I decided the bug was fixed by manually clicking New Game and checking the Developer Debug Info expander to confirm the history list was empty before any new guesses were submitted. Because the bug was in app.py's New Game handler — not a pure function — manual verification using the debug panel was the right approach.
+
+Describe at least one test you ran:
+I played a round, submitted three guesses, then clicked New Game. Before the fix, the history list in the debug expander still showed all three guesses from the previous round. After adding st.session_state.history = [] to the new_game block, the same sequence produced an empty history list immediately after the reset, confirming previous guesses are now cleared on every new game.
+
+Did AI help you design or understand any tests? How?
+Claude pointed out that since the bug lived in the New Game button handler in app.py — not a pure function — a unit test wasn't appropriate. It suggested using the Developer Debug Info expander to observe the history list directly before and after clicking New Game, which gave immediate, reliable feedback. This was consistent with the same verification approach used for Bugs 3, 4, and 12 — matching the tool to where the bug actually lives.
+
+Bug 14:
+
+How did you decide whether a bug was really fixed?
+I decided the bug was fixed when the pytest test test_update_score_win_first_attempt passed with the corrected assertion (== 90). Because update_score is a pure function, a unit test was the right tool — and crucially, the test itself had to be fixed first since it was asserting the broken behavior (== 80), which is why the bug had gone undetected.
+
+Describe at least one test you ran:
+I ran pytest on test_update_score_win_first_attempt, which calls update_score(0, "Win", 1) and asserts the result equals 90. Before fixing the formula, the function returned 80 because of the spurious + 1. After removing it, the function returned 90 and the test passed. I also checked test_update_score_win_minimum_points, which I updated to use attempt_number=10 (the actual boundary where the corrected formula reaches 0 before clamping), confirming the floor of 10 still applies correctly.
+
+Did AI help you design or understand any tests? How?
+Claude identified that the test comment ("100 - 10*(1+1) = 80") matched the broken formula rather than the intended behavior, which is what caused the bug to go undetected. This reinforced an important lesson: a test that was written against buggy code will pass the bug and fail the fix — so when changing a formula, every test asserting its output must be reviewed at the same time, not just the production code.
 
 
 ---
