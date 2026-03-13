@@ -112,6 +112,19 @@ Claude correctly identified that app.py lines 103–106 were alternating the typ
 Bug 9:
 Claude correctly identified that st.session_state.attempts += 1 was placed before the parse_guess call, so any invalid input — an empty field or a non-numeric string — still consumed an attempt even though no real guess was made. It also caught that the increment was written as a broken two-line expression (st.session_state.attempts on one line, = 1 on the next), which was syntactically invalid. The fix was to remove the misplaced increment entirely and add a correct attempts += 1 inside the else branch, so only successfully parsed guesses count. I verified it by entering an empty field and typing "abc", confirming the error message appeared but the attempts-left counter did not decrease.
 
+Bug 10:
+Claude correctly identified that history.append(raw_guess) was placed inside the if not ok branch, meaning invalid inputs like "" or "abc" were being recorded in the guess history even when parse_guess() failed. The fix was simply removing that one line — history.append(guess_int) in the else branch already handles the valid case correctly, so only successfully parsed integers get recorded. I verified it by submitting invalid input and checking the Developer Debug Info expander to confirm the history list stayed unchanged.
+
+Bug 11:
+Claude correctly identified that the entire st.warning(message) call was wrapped inside if show_hint:, which meant unchecking the checkbox suppressed all feedback — not just the directional hint. With show_hint = False, submitting any guess produced no visible output at all, making it impossible to play logically. The fix was to move the show_hint check inside a guard for non-win outcomes, and add an else branch showing a neutral "Guess recorded." message. I verified it by unchecking the checkbox, submitting a wrong guess, and confirming the info message appeared without revealing the hint direction.
+
+Bug 12:
+Claude correctly identified that st.session_state.status was never reset in the New Game block. After winning or losing, the status remained "won" or "lost", so the early-stop guard at line 89 immediately called st.stop() on the very next rerun — even after clicking New Game. The fix was a one-line addition: st.session_state.status = "playing" inside the new_game block. I verified it by winning a game, clicking New Game, submitting a guess, and confirming the game accepted the input and decremented the attempts counter normally.
+
+Example of an incorrect or misleading AI suggestion for Bug 12:
+Claude's first explanation of the bug described it as a "missing reset" without flagging that st.rerun() at the end of the new_game block actually triggers the status check on the very next script execution — meaning the guard fires before any guess is submitted, not on guess submission. I initially thought the bug would only surface when clicking Submit after New Game, but it actually blocks the game immediately after the rerun. Running the app manually made this clear: the "You already won." banner appeared right after clicking New Game, before I could type anything at all.
+
+
 ---
 
 ## 3. Debugging and testing your fixes
@@ -214,6 +227,39 @@ I ran the app, used the Developer Debug Info expander to read the secret number,
 
 Did AI help you design or understand any tests? How?
 Claude pointed out that because this bug lived in app.py's submit handler — not a pure function — a pytest unit test wasn't the right tool. It suggested a targeted manual check: read the secret from the debug expander, then submit it on an even attempt to expose the failure directly. This made the bug immediately reproducible and the fix immediately verifiable without needing to guess or write extra test code.
+
+Bug 10:
+
+How did you decide whether a bug was really fixed?
+I decided the bug was fixed by manually submitting invalid input and checking the Developer Debug Info expander to confirm the history list did not change. Because the bug was in app.py's submit handler — not a pure function — manual verification using the debug panel was the right approach.
+
+Describe at least one test you ran:
+I typed "abc" into the guess field and clicked Submit. Before the fix, the history list in the debug expander showed "abc" appended even though an error was displayed. After removing the history.append(raw_guess) line from the if not ok branch, the same input showed the error but left the history list unchanged, confirming only valid integers are now recorded.
+
+Did AI help you design or understand any tests? How?
+Claude pointed out that the fix was a single line removal and suggested verifying it directly through the debug expander rather than writing a unit test, since the bug lived in Streamlit UI code. It noted that history.append(guess_int) in the else branch already covered the valid case, so the only thing needed was confirming the invalid branch no longer touched history at all.
+
+Bug 11:
+
+How did you decide whether a bug was really fixed?
+I decided the bug was fixed by unchecking "Show hint" and submitting a guess, then confirming that some feedback still appeared. Before the fix, unchecking the checkbox produced complete silence — no message at all after submitting — making it impossible to know whether the guess was too high or too low. After the fix, a neutral "Guess recorded." message appeared instead, confirming the guess was accepted without leaking the directional hint.
+
+Describe at least one test you ran:
+I unchecked "Show hint", typed a guess I knew was wrong, and clicked Submit. Before the fix, the page just refreshed with no feedback. After the fix, "Guess recorded." appeared as an info message. I also verified that re-checking the box immediately restored the directional hint ("Go LOWER!" / "Go HIGHER!"), confirming the checkbox now correctly controls only the hint detail rather than all feedback.
+
+Did AI help you design or understand any tests? How?
+Claude identified the root cause: the entire st.warning(message) call was inside if show_hint:, meaning disabling the hint suppressed all output from check_guess() — including feedback the player needs to keep playing. It suggested wrapping only the non-win outcomes in the show_hint check and adding an else branch with a neutral acknowledgment, so the game remains playable regardless of the checkbox state. The fix was verified manually since the bug lived in Streamlit UI code rather than a pure function.
+
+Bug 12:
+
+How did you decide whether a bug was really fixed?
+I decided the bug was fixed by manually reproducing the full failure path: win a game, click New Game, then immediately try to submit a guess. Before the fix, clicking New Game appeared to work — the "New game started." banner showed and the secret reset — but the game was still blocked because st.rerun() triggered the status guard before any guess could be made, showing "You already won." and halting the script. After adding st.session_state.status = "playing" to the New Game block, the game fully reset and accepted new guesses as expected.
+
+Describe at least one test you ran:
+I played a game to a win, clicked New Game, then typed a guess and clicked Submit. Before the fix, the "You already won." error banner appeared immediately after the rerun — before I even submitted a guess — because st.stop() was called at the status check on line 89. After the fix, the guess went through, the attempts counter decremented correctly, and a hint appeared. I repeated the same test after losing a game to confirm the "lost" status was also cleared.
+
+Did AI help you design or understand any tests? How?
+Claude pointed out that the bug was invisible during normal play and only surfaced after reaching a terminal state. It suggested the exact reproduction steps — play to completion, click New Game, submit a guess — and explained that st.rerun() makes Streamlit re-execute the entire script from the top, so the status guard fires immediately on the rerun rather than waiting for the next Submit click. This helped me understand why the game appeared broken right after clicking New Game rather than only when guessing, which made the fix and verification straightforward.
 
 
 ---

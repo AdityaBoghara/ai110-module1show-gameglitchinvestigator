@@ -79,6 +79,10 @@ with col3:
 if new_game:
     st.session_state.attempts = 0
     st.session_state.secret = random.randint(low, high)
+    # FIXME: status was never reset here, so after winning or losing the early-stop
+    # check at line 85 would immediately halt the new game.
+    # FIX: Reset status to "playing" so the player can actually play again.
+    st.session_state.status = "playing"
     st.success("New game started.")
     st.rerun()
 
@@ -92,8 +96,11 @@ if st.session_state.status != "playing":
 if submit:
     ok, guess_int, err = parse_guess(raw_guess)
 
+    # FIXME: Invalid input (e.g. "" or "abc") was appended to history even when
+    # parse_guess() failed, recording raw invalid strings instead of valid integers.
+    # FIX: Removed the history.append(raw_guess) call from the invalid branch so
+    # only successfully parsed guesses are recorded in history.
     if not ok:
-        st.session_state.history.append(raw_guess)
         st.error(err)
     else:
         # FIXME: attempts += 1 ran before input validation, so invalid guesses
@@ -109,8 +116,13 @@ if submit:
         # FIX: Remove the type-switching logic and always pass secret as int
         outcome, message = check_guess(guess_int, st.session_state.secret)
 
-        if show_hint:
-            st.warning(message)
+        # FIXME: show_hint = False suppressed all feedback, making the game unplayable
+        # FIX: Always show directional feedback; show_hint only controls the hint wording
+        if outcome != "Win":
+            if show_hint:
+                st.warning(message)
+            else:
+                st.info("Guess recorded.")
 
         st.session_state.score = update_score(
             current_score=st.session_state.score,
