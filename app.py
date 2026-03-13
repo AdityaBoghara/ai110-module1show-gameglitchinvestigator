@@ -90,22 +90,24 @@ if st.session_state.status != "playing":
     st.stop()
 
 if submit:
-    st.session_state.attempts += 1
-
     ok, guess_int, err = parse_guess(raw_guess)
 
     if not ok:
         st.session_state.history.append(raw_guess)
         st.error(err)
     else:
+        # FIXME: attempts += 1 ran before input validation, so invalid guesses
+        # (empty field or non-number) still consumed an attempt.
+        # FIX: Move the increment inside the valid-input branch so only
+        # successful parses count against the player's attempts.
+        st.session_state.attempts += 1
         st.session_state.history.append(guess_int)
 
-        if st.session_state.attempts % 2 == 0:
-            secret = str(st.session_state.secret)
-        else:
-            secret = st.session_state.secret
-
-        outcome, message = check_guess(guess_int, secret)
+        # FIXME: secret was alternately cast to str on even attempts and kept as int
+        # on odd attempts, causing check_guess() to always fail on even attempts
+        # because comparing an int guess to a str secret never matches.
+        # FIX: Remove the type-switching logic and always pass secret as int
+        outcome, message = check_guess(guess_int, st.session_state.secret)
 
         if show_hint:
             st.warning(message)

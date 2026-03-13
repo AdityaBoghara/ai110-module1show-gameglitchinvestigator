@@ -54,6 +54,22 @@ Answer each question in 3 to 5 sentences. Be specific and honest about what actu
   Expected: The hint is optional; the game still provides some feedback either way.
   Actually happened: With show_hint = False, zero feedback was shown — no way to know if a guess was too high or too low, making the game impossible to win through logic.
 
+  Bug 12 — New Game button does not reset game status (Critical)
+  Expected: Clicking New Game resets all game state so the player can play a full new round.
+  Actually happened: st.session_state.status was never reset in the New Game block. After winning or losing, clicking New Game generates a new secret and resets attempts, but status remains "won" or "lost". The early-stop check at line 85 immediately halts the game, so the player can never actually play again without refreshing the browser.
+
+  Bug 13 — New Game button does not reset guess history
+  Expected: Starting a new game clears the previous round's guess history.
+  Actually happened: st.session_state.history is never cleared in the New Game block, so guesses from previous rounds accumulate indefinitely in the history list shown in the debug panel.
+
+  Bug 14 — Win score formula is off by one
+  Expected: Winning on attempt 1 should award the maximum possible points (e.g., 90).
+  Actually happened: The formula uses 100 - 10 * (attempt_number + 1), so winning on attempt 1 awards 80 points instead of 90 — penalizing the player one full tier as if they had used two attempts. The regression test was also written to match the broken formula, so the bug was never caught by the test suite.
+
+  Bug 15 — Secret type alternation still present in app.py (partially unresolved)
+  Expected: The secret should always be passed as an integer to check_guess.
+  Actually happened: app.py lines 103–106 still cast the secret to a string on every even-numbered attempt. The check_guess function was patched to normalize both values to int first, which masks the problem, but the root cause — the type alternation — was never removed from the code.
+
 
 
 
@@ -89,6 +105,12 @@ Claude correctly identified that the info banner in app.py was hardcoded to "Gue
 
 Bug 4:
 Claude correctly identified that the New Game button called random.randint(1, 100) instead of using the low and high variables already derived from the selected difficulty. The fix was a one-line change: replacing the hardcoded values with random.randint(low, high). I verified it by selecting Easy difficulty, clicking New Game repeatedly, and confirming via the Developer Debug Info expander that the secret number stayed within the Easy range (1–20) every time.
+
+Bug 15:
+Claude correctly identified that app.py lines 103–106 were alternating the type of secret — casting it to a str on even-numbered attempts and leaving it as an int on odd ones. This caused check_guess() to always fail on even attempts because comparing an int guess to a str secret never evaluates as equal in Python. The fix was to remove the type-switching block entirely and always pass st.session_state.secret directly as an int. I verified it by playing the game and confirming a correct guess on an even-numbered attempt now correctly registers as a win.
+
+Bug 9:
+Claude correctly identified that st.session_state.attempts += 1 was placed before the parse_guess call, so any invalid input — an empty field or a non-numeric string — still consumed an attempt even though no real guess was made. It also caught that the increment was written as a broken two-line expression (st.session_state.attempts on one line, = 1 on the next), which was syntactically invalid. The fix was to remove the misplaced increment entirely and add a correct attempts += 1 inside the else branch, so only successfully parsed guesses count. I verified it by entering an empty field and typing "abc", confirming the error message appeared but the attempts-left counter did not decrease.
 
 ---
 
@@ -170,6 +192,28 @@ I set difficulty to Easy, clicked New Game five times, and read the "Secret:" va
 
 Did AI help you design or understand any tests? How?
 Claude pointed out that since the bug lived in the New Game button handler in app.py — not a pure function — a unit test wasn't the right tool. It suggested using the built-in debug expander to observe the secret directly, which gave immediate, reliable feedback without needing to guess whether the fix was working. This was the same lesson as Bugs 2 and 3: match the verification method to where the bug actually lives.
+
+Bug 9:
+
+How did you decide whether a bug was really fixed?
+I decided the bug was fixed by manually testing with invalid inputs — an empty field and the string "abc" — and confirming that the attempts-left counter did not decrease after each rejected submission. Because the bug was in app.py's submit handler rather than a pure function, manual verification was the right approach.
+
+Describe at least one test you ran:
+I typed "abc" into the guess field and clicked Submit. Before the fix, the attempts-left count dropped by one even though an error was shown. After moving attempts += 1 inside the else branch, the same input showed the error but left the counter unchanged. I also tested an empty submission and confirmed the same behavior, ruling out any edge case between the two invalid input types.
+
+Did AI help you design or understand any tests? How?
+Claude pointed out that since the bug lived in the Streamlit submit handler — not a pure function — a pytest unit test wasn't appropriate here. It suggested a two-case manual check: one empty submission and one non-numeric string, both confirming the attempts counter stays the same while the error message still appears. This targeted approach made the fix immediately verifiable without needing to write extra test infrastructure.
+
+Bug 15:
+
+How did you decide whether a bug was really fixed?
+I decided the bug was fixed by manually playing the game and submitting a correct guess on an even-numbered attempt. Before the fix, a correct guess on attempt 2, 4, or 6 would never register as a win — the game would just show a hint and keep going. After removing the type-switching logic, a correct guess on any attempt immediately triggered the win screen.
+
+Describe at least one test you ran:
+I ran the app, used the Developer Debug Info expander to read the secret number, then deliberately submitted that exact number as my second guess (an even attempt). Before the fix the game responded with a "Too Low" or "Too High" hint instead of winning. After the fix it correctly showed the win screen and balloons, confirming int-to-int comparison was now happening on every attempt.
+
+Did AI help you design or understand any tests? How?
+Claude pointed out that because this bug lived in app.py's submit handler — not a pure function — a pytest unit test wasn't the right tool. It suggested a targeted manual check: read the secret from the debug expander, then submit it on an even attempt to expose the failure directly. This made the bug immediately reproducible and the fix immediately verifiable without needing to guess or write extra test code.
 
 
 ---
